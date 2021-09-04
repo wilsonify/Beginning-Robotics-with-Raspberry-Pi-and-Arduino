@@ -1,0 +1,6 @@
+pyserial
+adafruit-circuitpython-motorkit
+numpy
+opencv-contrib-python
+
+raspberry-gpio-python # https://sourceforge.net/projects/raspberry-gpio-python/
