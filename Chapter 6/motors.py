@@ -1,5 +1,5 @@
-
 import time
+
 from adafruit_motorkit import MotorKit
 
 # create motor object
@@ -19,6 +19,3 @@ time.sleep(1.0)
 
 # stop motor
 kit.motor1.throttle = 0.0
-
-
-
