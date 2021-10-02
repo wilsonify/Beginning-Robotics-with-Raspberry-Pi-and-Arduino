@@ -49,13 +49,13 @@ opencv: ~/opencv/build before
 	-D BUILD_EXAMPLES=OFF .. &&
 	make -j2
 
-numpy: ~/numpy-1.21.2
+numpy: ~/numpy-1.21.2 before
 	cd ~/numpy && python3 setup.py build
 
-scipy: ~/scipy-1.7.1
+scipy: ~/scipy-1.7.1 before
 	python3 setup.py build
 
-after: foo.txt
+after: opencv numpy scipy
 	echo "reset swap 2048 to 100"
 	sudo sed -i 's/# CONF_SWAPSIZE=2048/CONF_SWAPSIZE=100/' /etc/dphys-swapfile
 	echo "Restart the swap service"
