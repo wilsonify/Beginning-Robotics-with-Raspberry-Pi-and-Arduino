@@ -9,12 +9,10 @@ unzip opencv.zip
 unzip opencv_contrib.zip
 mv opencv-4.4.0 opencv
 mv opencv_contrib-4.4.0 opencv_contrib
+
 # 4. Install the Python development libraries and pip:
 sudo apt-get install python3-dev
-wget https://bootstrap.pypa.io/get-pip.py
-sudo python get-pip.py
-# 5. Make sure that NumPy is installed:
-pip install numpy
+sudo python3 get-pip.py
 
 # 6. Increase the memory allocated for swap.
 # The compilation of these libraries is very memory intensive.
@@ -29,6 +27,9 @@ sed -i 's/# CONF_SWAPSIZE=100/CONF_SWAPSIZE=2048/' /etc/dphys-swapfile
 # 9. Restart the swap service:
 sudo /etc/init.d/dphys-swapfile stop
 sudo /etc/init.d/dphys-swapfile start
+
+# 5. Make sure that NumPy is installed:
+sudo pip3 install numpy
 
 # 10. Prepare the source code for compiling:
 cd ~/opencv
