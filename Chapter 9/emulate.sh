@@ -1,3 +1,6 @@
+# clone kernel
+git clone https://github.com/dhruvvyas90/qemu-rpi-kernel.git
+
 # Run ARM/MIPS Debian on QEMU
 # arm, debug, emulation, mips, qemu, qemu-system
 #
@@ -19,7 +22,7 @@
 # several hours to about half an hour.
 
 # Preparation Environment
-# I always prefer KUbuntu, so just install qemu by apt.
+# install qemu
 apt install qemu-system qemu-utils bridge-utils libguestfs-tools
 
 # download the armhf Debian DVD.
@@ -37,11 +40,11 @@ sudo mount -o loop debian-10.6.0-armhf-DVD-1.iso ./mnt
 cat mnt/boot/grub/grub.cfg
 
 # And we can see the boot entry.
-menuentry 'Install' {
-    set background_color=black
-    linux    /install.ahf/vmlinuz  --- quiet
-    initrd   /install.ahf/initrd.gz
-}
+# menuentry 'Install' {
+#    set background_color=black
+#    linux    /install.ahf/vmlinuz  --- quiet
+#    initrd   /install.ahf/initrd.gz
+#}
 
 # Extract initrd and kernel.
 cp mnt/install.ahf/vmlinuz ./
