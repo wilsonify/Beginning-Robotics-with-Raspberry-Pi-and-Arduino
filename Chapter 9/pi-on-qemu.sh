@@ -32,7 +32,7 @@ fdisk -l <image-file>
 #2017-03-02-raspbian-jessie.img1        8192  137215  129024  63M  c W95 FAT32 (LBA)
 #2017-03-02-raspbian-jessie.img2      137216 8581119 8443904   4G 83 Linux
 
-#You see that the filesystem (.img2) starts at sector 137216.
+# You see that the filesystem (.img2) starts at sector 137216.
 # Now take that value and multiply it by 512, in this case it’s 512 * 137216 = 70254592 bytes.
 # Use this value as an offset in the following command:
 
@@ -41,102 +41,138 @@ sudo mount -v -o offset=70254592 -t ext4 ~/qemu_vms/<your-img-file.img> /mnt/ras
 sudo nano /mnt/raspbian/etc/ld.so.preload
 
 # Comment out every entry in that file with ‘#’, save and exit with Ctrl-x » Y.
-sudo nano /mnt/raspbian/etc/fstab
-
+# sudo nano /mnt/raspbian/etc/fstab
 # IF you see anything with mmcblk0 in fstab, then:
 # Replace the first entry containing /dev/mmcblk0p1 with /dev/sda1
 # Replace the second entry containing /dev/mmcblk0p2 with /dev/sda2, save and exit.
+sudo sed -i 's/# \/dev\/mmcblk0p1/\/dev\/mmcblk0p2/' /mnt/raspbian/etc/fstab
 
-$ cd ~
-$ sudo umount /mnt/raspbian
+sudo umount /mnt/raspbian
 
-Now you can emulate it on Qemu by using the following command:
+# Now you can emulate it on Qemu
+qemu-system-arm \
+-kernel ~/qemu_vms/<your-kernel-qemu> \
+-cpu arm1176 \
+-m 256 \
+-M versatilepb \
+-serial stdio \
+-append "root=/dev/sda2 rootfstype=ext4 rw" \
+-hda ~/qemu_vms/<your-jessie-image.img> \
+-redir tcp:5022::22 \
+-no-reboot
 
-$ qemu-system-arm -kernel ~/qemu_vms/<your-kernel-qemu> -cpu arm1176 -m 256 -M versatilepb -serial stdio -append "root=/dev/sda2 rootfstype=ext4 rw" -hda ~/qemu_vms/<your-jessie-image.img> -redir tcp:5022::22 -no-reboot
+# If you see GUI of the Raspbian OS, you need to get into the terminal.
+# Use Win key to get the menu, then navigate with arrow keys until you find Terminal application.
+# From the terminal, you need to start the SSH service so that you can access it from your host system
+# (the one from which you launched the qemu).
 
-If you see GUI of the Raspbian OS, you need to get into the terminal. Use Win key to get the menu, then navigate with arrow keys until you find Terminal application as shown below.
+# Now you can SSH into it from your host system with (default password – raspberry):
+ssh pi@127.0.0.1 -p 5022
 
-From the terminal, you need to start the SSH service so that you can access it from your host system (the one from which you launched the qemu).
+# For a more advanced network setup see the “Advanced Networking” paragraph below.
+#
+# Troubleshooting
+# If SSH doesn’t start in your emulator at startup by default, you can change that inside your Pi terminal with:
+sudo update-rc.d ssh enable
 
-Now you can SSH into it from your host system with (default password – raspberry):
+# If your emulated Pi starts the GUI and you want to make it start in console mode at startup,
+# use the following command inside your Pi terminal:
 
-$ ssh pi@127.0.0.1 -p 5022
+sudo raspi-config
+# >Select 3 – Boot Options
+# >Select B1 – Desktop / CLI
+# >Select B2 – Console Autologin
 
-For a more advanced network setup see the “Advanced Networking” paragraph below.
-Troubleshooting
+# If your mouse doesn’t move in the emulated Pi,
+# click <Windows>,
+# arrow down to Accessories,
+# arrow right,
+# arrow down to Terminal,
+# enter.
+#
+# Resizing the Raspbian image
+# Once you are done with the setup, you are left with a total of 3,9GB on your image, which is full.
+# To enlarge your Raspbian image, follow these steps on your Ubuntu machine:
+#
+# Create a copy of your existing image:
+cp <your-raspbian-jessie>.img rasbian.img
 
-If SSH doesn’t start in your emulator at startup by default, you can change that inside your Pi terminal with:
+#resize your copy:
+qemu-img resize raspbian.img +6G
 
-$ sudo update-rc.d ssh enable
+#Now start the original raspbian with enlarged image as second hard drive:
+sudo qemu-system-arm \
+-kernel ~/qemu_vms/<kernel-qemu> \
+-cpu arm1176 \
+-m 256 \
+-M versatilepb \
+-serial stdio \
+-append "root=/dev/sda2 rootfstype=ext4 rw" \
+-hda ~/qemu_vms/<your-original-raspbian-jessie>.img \
+-redir tcp:5022::22 \
+-no-reboot \
+-hdb raspbian.img
 
-If your emulated Pi starts the GUI and you want to make it start in console mode at startup, use the following command inside your Pi terminal:
+# Login and run:
+sudo cfdisk /dev/sdb
 
-$ sudo raspi-config
->Select 3 – Boot Options
->Select B1 – Desktop / CLI
->Select B2 – Console Autologin
+# Delete the second partition (sdb2) and create a New partition with all available space.
+# Once new partition is creates, use Write to commit the changes. Then Quit the cfdisk.
 
-If your mouse doesn’t move in the emulated Pi, click <Windows>, arrow down to Accessories, arrow right, arrow down to Terminal, enter.
-Resizing the Raspbian image
+# Resize and check the old partition and shutdown.
+sudo resize2fs /dev/sdb2
+sudo fsck -f /dev/sdb2
+sudo halt
 
-Once you are done with the setup, you are left with a total of 3,9GB on your image, which is full. To enlarge your Raspbian image, follow these steps on your Ubuntu machine:
+# Now you can start QEMU with your enlarged image:
+sudo qemu-system-arm \
+-kernel ~/qemu_vms/<kernel-qemu> \
+-cpu arm1176 \
+-m 256 \
+-M versatilepb \
+-serial stdio \
+-append "root=/dev/sda2 rootfstype=ext4 rw" \
+-hda ~/qemu_vms/raspbian.img \
+-redir tcp:5022::22
 
-Create a copy of your existing image:
+# Advanced Networking
+# In some cases you might want to access all the ports of the VM you are running in QEMU.
+# For example, you run some binary which opens some network port(s)
+# that you want to access/fuzz from your host (Ubuntu) system.
+# For this purpose, we can create a shared network interface (tap0)
+# which allows us to access all open ports (if those ports are not bound to 127.0.0.1).
 
-$ cp <your-raspbian-jessie>.img rasbian.img
+# This can be done with the following commands on your HOST (Ubuntu) system:
+sudo apt-get install uml-utilities
+sudo tunctl -t tap0 -u azeria
+sudo ifconfig tap0 172.16.0.1/24
 
-Run this command to resize your copy:
+# After these commands you should see the tap0 interface in the ifconfig output.
+ifconfig tap0
+#tap0: flags=4099<UP,BROADCAST,MULTICAST> mtu 1500
+#inet 172.16.0.1 netmask 255.255.255.0 broadcast 172.16.0.255
+#ether 22:a8:a9:d3:95:f1 txqueuelen 1000 (Ethernet)
+#RX packets 0 bytes 0 (0.0 B)
+#RX errors 0 dropped 0 overruns 0 frame 0
+#TX packets 0 bytes 0 (0.0 B)
+#TX errors 0 dropped 0 overruns 0 carrier 0 collisions 0
 
-$ qemu-img resize raspbian.img +6G
+#You can now start your QEMU VM with this command:
+sudo qemu-system-arm \
+-kernel ~/qemu_vms/<kernel-qemu> \
+-cpu arm1176 \
+-m 256 \
+-M versatilepb \
+-serial stdio \
+-append "root=/dev/sda2 rootfstype=ext4 rw" \
+-hda ~/qemu_vms/rasbian.img \
+-net nic \
+-net tap,ifname=tap0,script=no,downscript=no \
+-no-reboot
 
-Now start the original raspbian with enlarged image as second hard drive:
+# When the QEMU VM starts, you need to assign an IP to it’s eth0 interface with the following command:
+sudo ifconfig eth0 172.16.0.2/24
 
-$ sudo qemu-system-arm -kernel ~/qemu_vms/<kernel-qemu> -cpu arm1176 -m 256 -M versatilepb -serial stdio -append "root=/dev/sda2 rootfstype=ext4 rw" -hda ~/qemu_vms/<your-original-raspbian-jessie>.img -redir tcp:5022::22 -no-reboot -hdb raspbian.img
-
-Login and run:
-
-$ sudo cfdisk /dev/sdb
-
-Delete the second partition (sdb2) and create a New partition with all available space. Once new partition is creates, use Write to commit the changes. Then Quit the cfdisk.
-
-Resize and check the old partition and shutdown.
-
-$ sudo resize2fs /dev/sdb2
-$ sudo fsck -f /dev/sdb2
-$ sudo halt
-
-Now you can start QEMU with your enlarged image:
-
-$ sudo qemu-system-arm -kernel ~/qemu_vms/<kernel-qemu> -cpu arm1176 -m 256 -M versatilepb -serial stdio -append "root=/dev/sda2 rootfstype=ext4 rw" -hda ~/qemu_vms/raspbian.img -redir tcp:5022::22
-
-Advanced Networking
-
-In some cases you might want to access all the ports of the VM you are running in QEMU. For example, you run some binary which opens some network port(s) that you want to access/fuzz from your host (Ubuntu) system. For this purpose, we can create a shared network interface (tap0) which allows us to access all open ports (if those ports are not bound to 127.0.0.1). Thanks to @0xMitsurugi for suggesting this to include in this tutorial.
-
-This can be done with the following commands on your HOST (Ubuntu) system:
-
-azeria@labs:~ $ sudo apt-get install uml-utilities
-azeria@labs:~ $ sudo tunctl -t tap0 -u azeria
-azeria@labs:~ $ sudo ifconfig tap0 172.16.0.1/24
-
-After these commands you should see the tap0 interface in the ifconfig output.
-
-azeria@labs:~ $ ifconfig tap0
-tap0: flags=4099<UP,BROADCAST,MULTICAST> mtu 1500
-inet 172.16.0.1 netmask 255.255.255.0 broadcast 172.16.0.255
-ether 22:a8:a9:d3:95:f1 txqueuelen 1000 (Ethernet)
-RX packets 0 bytes 0 (0.0 B)
-RX errors 0 dropped 0 overruns 0 frame 0
-TX packets 0 bytes 0 (0.0 B)
-TX errors 0 dropped 0 overruns 0 carrier 0 collisions 0
-
-You can now start your QEMU VM with this command:
-
-azeria@labs:~ $ sudo qemu-system-arm -kernel ~/qemu_vms/<kernel-qemu> -cpu arm1176 -m 256 -M versatilepb -serial stdio -append "root=/dev/sda2 rootfstype=ext4 rw" -hda ~/qemu_vms/rasbian.img -net nic -net tap,ifname=tap0,script=no,downscript=no -no-reboot
-
-When the QEMU VM starts, you need to assign an IP to it’s eth0 interface with the following command:
-
-pi@labs:~ $ sudo ifconfig eth0 172.16.0.2/24
-
-If everything went well, you should be able to reach open ports on the GUEST (Raspbian) from your HOST (Ubuntu) system. You can test this with a netcat (nc) tool (see an example below).
-
+# If everything went well, you should be able to reach open ports
+# on the GUEST (Raspbian) from your HOST (Ubuntu) system.
+# You can test this with a netcat (nc) tool (see an example below).
