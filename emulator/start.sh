@@ -1,4 +1,7 @@
 #!/bin/bash
+# https://blahcat.github.io/2017/06/25/qemu-images-to-play-with/
+# had to download vmlinuz-4.9.0-4-arm64, initrd.img-4.9.0-4-arm64, and disk.qcow2
+# from https://mega.nz/folder/oMoVzQaJ#iS73iiQQ3t_6HuE-XpnyaA/file/oBBhFSyI
 
 VM_USER=root
 VM_PASSWD=root
