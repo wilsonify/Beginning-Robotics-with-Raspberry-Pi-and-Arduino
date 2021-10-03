@@ -31,38 +31,42 @@ fdisk -l 2020-02-13-raspbian-buster.img
 #I/O size (minimum/optimal): 512 bytes / 512 bytes
 #Disklabel type: dos
 #Disk identifier: 0x432b3940
-#Device                          Boot  Start     End Sectors Size Id Type
-#2017-03-02-raspbian-jessie.img1        8192  137215  129024  63M  c W95 FAT32 (LBA)
-#2017-03-02-raspbian-jessie.img2      137216 8581119 8443904   4G 83 Linux
+#Device                          Boot  Start     End Sectors  Size Id Type
+#2020-02-13-raspbian-buster.img1        8192  532479  524288  256M  c W95 FAT32 (
+#2020-02-13-raspbian-buster.img2      532480 7397375 6864896  3.3G 83 Linux
+
 # You see that the filesystem (.img2) starts at sector 137216.
 # Now take that value and multiply it by 512, in this case it’s 512 * 137216 = 70254592 bytes.
 # Use this value as an offset in the following command:
-echo "offset=137216*512"
+echo "offset = 532480*512 = 272629760"
 sudo mkdir -p mnt/raspbian
-sudo mount -v -o offset=70254592 -t ext4 2020-02-13-raspbian-buster.img mnt/raspbian
+sudo mount -v -o offset=272629760 -t ext4 2020-02-13-raspbian-buster.img mnt/raspbian
 
 # Comment out every entry in that file with ‘#’, save and exit with Ctrl-x » Y.
 # sudo nano /mnt/raspbian/etc/fstab
 # IF you see anything with mmcblk0 in fstab, then:
 # Replace the first entry containing /dev/mmcblk0p1 with /dev/sda1
 # Replace the second entry containing /dev/mmcblk0p2 with /dev/sda2, save and exit.
-# sudo nano /mnt/raspbian/etc/ld.so.preload or:
-sudo sed -i 's/# \/dev\/mmcblk0p1/\/dev\/sda1/' /mnt/raspbian/etc/fstab
-sudo sed -i 's/# \/dev\/mmcblk0p2/\/dev\/sda2/' /mnt/raspbian/etc/fstab
+
+sudo nano /mnt/raspbian/etc/ld.so.preload
+sudo nano /mnt/raspbian/etc/fstab
+#sudo sed -i 's/# \/dev\/mmcblk0p1/\/dev\/sda1/' /mnt/raspbian/etc/fstab
+#sudo sed -i 's/# \/dev\/mmcblk0p2/\/dev\/sda2/' /mnt/raspbian/etc/fstab
 
 sudo umount mnt/raspbian
 
 # Now you can emulate it on Qemu
 qemu-system-arm \
--kernel kernel-qemu-4.19.50-buster \
 -cpu arm1176 \
 -m 256 \
+-kernel kernel-qemu-4.19.50-buster \
 -M versatilepb \
+-no-reboot \
 -serial stdio \
--append "root=/dev/sda2 rootfstype=ext4 rw" \
+-append "root=/dev/sda2 panic=1 rootfstype=ext4 rw console=ttyAMA0" \
+-nographic -monitor /dev/null \
 -hda 2020-02-13-raspbian-buster.img \
--redir tcp:5022::22 \
--no-reboot
+-dtb versatile-pb.dtb
 
 # If you see GUI of the Raspbian OS, you need to get into the terminal.
 # Use Win key to get the menu, then navigate with arrow keys until you find Terminal application.
