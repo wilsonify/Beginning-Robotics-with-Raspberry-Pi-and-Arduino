@@ -1,0 +1,11 @@
+apt install python3-pip
+apt install python3-dev
+apt install liblapack-dev
+apt install libblas-dev
+
+pip3 install cython
+pip3 install pybind11
+pip3 install numpy
+pip3 install scipy
+pip3 install scikit-learn
+pip3 install scikit-optimize
