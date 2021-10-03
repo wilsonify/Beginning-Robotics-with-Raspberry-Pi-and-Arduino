@@ -8,56 +8,59 @@
 # For the QEMU emulation you will need the following:
 #
 # A Raspbian Image: http://downloads.raspberrypi.org/raspbian/images/raspbian-2017-04-10/
+wget http://downloads.raspberrypi.org/raspbian/images/raspbian-2020-02-14/2020-02-13-raspbian-buster.zip
+unzip 2020-02-13-raspbian-buster.zip
+
+
 # (other versions might work, but Jessie is recommended)
 # Latest qemu kernel: https://github.com/dhruvvyas90/qemu-rpi-kernel
-#
+git clone https://github.com/dhruvvyas90/qemu-rpi-kernel
 # Inside your Ubuntu VM, create a new folder:
-# $ mkdir ~/qemu_vms/
 # Download and place the Raspbian Jessie image to ~/qemu_vms/.
+cp qemu-rpi-kernel/kernel-qemu-4.19.50-buster .
+cp qemu-rpi-kernel/versatile-pb.dtb .
+
 # Download and place the qemu-kernel to ~/qemu_vms/.
 sudo apt-get install qemu-system
-unzip <image-file>.zip
-fdisk -l <image-file>
 
 # You should see something like this:
-
+fdisk -l 2020-02-13-raspbian-buster.img
 #Disk 2017-03-02-raspbian-jessie.img: 4.1 GiB, 4393533440 bytes, 8581120 sectors
 #Units: sectors of 1 * 512 = 512 bytes
 #Sector size (logical/physical): 512 bytes / 512 bytes
 #I/O size (minimum/optimal): 512 bytes / 512 bytes
 #Disklabel type: dos
 #Disk identifier: 0x432b3940
-
 #Device                          Boot  Start     End Sectors Size Id Type
 #2017-03-02-raspbian-jessie.img1        8192  137215  129024  63M  c W95 FAT32 (LBA)
 #2017-03-02-raspbian-jessie.img2      137216 8581119 8443904   4G 83 Linux
-
 # You see that the filesystem (.img2) starts at sector 137216.
 # Now take that value and multiply it by 512, in this case it’s 512 * 137216 = 70254592 bytes.
 # Use this value as an offset in the following command:
-
-sudo mkdir /mnt/raspbian
-sudo mount -v -o offset=70254592 -t ext4 ~/qemu_vms/<your-img-file.img> /mnt/raspbian
-sudo nano /mnt/raspbian/etc/ld.so.preload
+echo "offset=137216*512"
+sudo mkdir -p mnt/raspbian
+sudo mount -v -o offset=70254592 -t ext4 2020-02-13-raspbian-buster.img mnt/raspbian
 
 # Comment out every entry in that file with ‘#’, save and exit with Ctrl-x » Y.
 # sudo nano /mnt/raspbian/etc/fstab
 # IF you see anything with mmcblk0 in fstab, then:
 # Replace the first entry containing /dev/mmcblk0p1 with /dev/sda1
 # Replace the second entry containing /dev/mmcblk0p2 with /dev/sda2, save and exit.
-sudo sed -i 's/# \/dev\/mmcblk0p1/\/dev\/mmcblk0p2/' /mnt/raspbian/etc/fstab
+# sudo nano /mnt/raspbian/etc/ld.so.preload or:
+sudo sed -i 's/# \/dev\/mmcblk0p1/\/dev\/sda1/' /mnt/raspbian/etc/fstab
+sudo sed -i 's/# \/dev\/mmcblk0p2/\/dev\/sda2/' /mnt/raspbian/etc/fstab
 
-sudo umount /mnt/raspbian
+sudo umount mnt/raspbian
 
 # Now you can emulate it on Qemu
 qemu-system-arm \
--kernel ~/qemu_vms/<your-kernel-qemu> \
+-kernel kernel-qemu-4.19.50-buster \
 -cpu arm1176 \
 -m 256 \
 -M versatilepb \
 -serial stdio \
 -append "root=/dev/sda2 rootfstype=ext4 rw" \
--hda ~/qemu_vms/<your-jessie-image.img> \
+-hda 2020-02-13-raspbian-buster.img \
 -redir tcp:5022::22 \
 -no-reboot
 
