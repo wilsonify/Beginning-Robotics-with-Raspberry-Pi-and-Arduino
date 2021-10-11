@@ -182,3 +182,6 @@ sudo qemu-system-arm \
 # ARM64 Debian can’t execute some ARM32 binary.
 # Running Debian on some real device is also a good choice.
 # For example, ARM raspberry PI, some MIPS routers, etc.
+
+
+

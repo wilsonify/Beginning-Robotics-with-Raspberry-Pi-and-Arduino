@@ -140,3 +140,67 @@ qemu-system-arm \
 => setenv bootargs root=/dev/mmcblk3p1
 => bootz 12000000 - 14000000
 
+qemu-system-arm \
+-machine sabrelite \
+-cpu cortex-a9 \
+-smp cpus=4,maxcpus=4 \
+-nographic \
+-kernel /home/thom/repos/linux/arch/arm/boot/zImage \
+-dtb /home/thom/repos/linux/arch/arm/boot/dts/imx6q-sabrelite.dtb \
+-m 1024 \
+-netdev user,id=n0 \
+-device sd-card,drive=mydrive
+-device virtio-net-device,netdev=n0 \
+-drive file=debian.qcow2,if=none,format=qcow2,id=hd0 \
+-device virtio-blk-device,drive=hd0 \
+-drive file=debian-10.6.0-armhf-DVD-1.iso,if=none,format=raw,id=hd1 \
+-device virtio-blk-device,drive=hd1
+
+
+qemu-system-arm \
+ -machine sabrelite \
+ -cpu cortex-a9 \
+ -smp cpus=4,maxcpus=4 \
+ -nographic \
+ -kernel fromUbuntu/vmlinuz \
+ -initrd fromUbuntu/initrd \
+ -dtb /home/thom/repos/linux/arch/arm/boot/dts/imx6q-sabrelite.dtb \
+ -m 1024 \
+ -device sd-card,drive=hd0 \
+ -drive file=rootfs.qcow2,if=none,format=qcow2,id=hd0 \
+ -device sd-card,drive=hd1 \
+ -drive file=ubuntu-20.04.3-live-server-arm64.iso,if=none,format=raw,id=hd1
+
+
+
+# Troubleshooting: "No 'virtio-bus' bus found for device 'virtio-net-device'"
+
+# virtio is split into two layers:
+# * transport (how the virtio device connects to the guest), # which could be PCI, or MMIO, or S390 device channels
+# * backend (block, net, etc) and the two are connected via a 'virtio-bus' bus,
+#   which is 1-1 (ie connects exactly one backend to one transport)
+
+# virtio-net-device is a backend, and the error is telling you
+# that there aren't any transports available to plug it into.
+
+# You would need to also create a virtio-pci device
+# (and use suitable options to both to ensure that the virtio-net-device is plugged into the virtio-pci device).
+
+# Almost always you don't need to care about the split between
+# backends and transports, because we provide convenience wrappers
+# like virtio-net-pci, which are a PCI transport plus a backend
+# already connected to each other and wrapped up in a handy
+# single device package. It's possible to create and plug together
+# a backend and a transport manually, but it's unnecessary complexity of the command line.
+
+# Is there any particular reason you wanted to use virtio-net-device directly?
+# The only use for it specifically is if you wanted
+# to plug it directly into one of the legacy virtio-mmio
+# transports provided on some ARM board models; but even there we recommend PCI virtio instead these days.
+
+# sd card must be a power of 2
+qemu-img convert -f raw -O qcow2 ubuntu-20.04.3-live-server-arm64.iso ubuntu-20.04.3-live-server-arm64.qcow2
+qemu-img resize ubuntu-20.04.3-live-server-arm64.qcow2 2G
+
+# Troubleshoot: Did not find UEFI binary for armv7l
+# /usr/share/AAVMF/AAVMF32_CODE.fd
